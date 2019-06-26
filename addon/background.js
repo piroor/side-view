@@ -42,7 +42,9 @@ browser.contextMenus.onClicked.addListener(async (info, tab) => {
   let favIconUrl;
   let title;
   let incognito = tab && tab.incognito;
-  await browser.sidebarAction.open();
+  if (!isTSTActive) {
+    await browser.sidebarAction.open();
+  }
   if (info.linkUrl) {
     url = info.linkUrl;
   } else if (info.bookmarkId) {
@@ -65,7 +67,9 @@ browser.pageAction.onClicked.addListener((async (tab) => {
   if (!tab.incognito) {
     addRecentTab({url, favIconUrl: tab.favIconUrl, title: tab.title});
   }
-  await browser.sidebarAction.open();
+  if (!isTSTActive) {
+    await browser.sidebarAction.open();
+  }
   openUrl(url);
 }));
 
@@ -79,7 +83,11 @@ async function openUrl(url) {
   }).catch((error) => {
     // If the popup is not open this gives an error, but we don't care
   });
-  browser.sidebarAction.setPanel({panel: url});
+  if (isTSTActive) {
+    registerToTST(url);
+  } else {
+    browser.sidebarAction.setPanel({panel: url});
+  }
 }
 
 /* eslint-disable consistent-return */
@@ -110,6 +118,8 @@ browser.runtime.onMessage.addListener(async (message) => {
     });
   } else if (message.type === "turnOffPrivateWarning") {
     turnOffPrivateWarning();
+  } else if (message.type === "isTSTActive") {
+    return Promise.resolve(isTSTActive);
   } else {
     console.error("Unexpected message to background:", message);
   }
@@ -141,7 +151,9 @@ async function toggleDesktop() {
   }
   // We can't trigger a real reload without changing the URL, so we change it to blank and then
   // back to the previous URL:
-  browser.sidebarAction.setPanel({panel: "about:blank"});
+  if (!isTSTActive) {
+    browser.sidebarAction.setPanel({panel: "about:blank"});
+  }
   openUrl(sidebarUrl);
   await browser.storage.local.set({desktopHostnames, defaultDesktopVersion: DEFAULT_DESKTOP_VERSION});
 }
@@ -254,6 +266,56 @@ async function init() {
   if (!result.hasBeenOnboarded) {
     showOnboardingBadge();
   }
+
+  registerToTST();
 }
 
 init();
+
+
+/* Support Tree Style Tab's subpanel */
+
+const TST_ID = "treestyletab@piro.sakura.ne.jp";
+let isTSTActive = false;
+
+async function registerToTST(url) {
+  try {
+    const manifest = browser.runtime.getManifest();
+    const success = await browser.runtime.sendMessage(TST_ID, {
+      type: "register-self",
+      name: manifest.name,
+      icons: manifest.icons,
+      listeningTypes: ["wait-for-shutdown"],
+      subPanel: {
+        title: manifest.name,
+        url:   url || "about:blank",
+      },
+    });
+    if (success && !isTSTActive) {
+      isTSTActive = true;
+      browser.runtime.sendMessage(TST_ID, { type: "wait-for-shutdown" }).catch(error => {
+        isTSTActive = false;
+      });
+    }
+  } catch (error) {
+    // TST is not available
+  }
+}
+
+/* eslint-disable consistent-return */
+// Because this dispatches to different kinds of functions, its return behavior is inconsistent
+browser.runtime.onMessageExternal.addListener((message, sender) => {
+  switch (sender.id) {
+    case TST_ID:
+      switch (message.type) {
+        case "ready":
+          registerToTST();
+          break;
+
+        case "wait-for-shutdown":
+          return new Promise(() => {});
+      }
+      break;
+  }
+});
+/* eslint-enable consistent-return */

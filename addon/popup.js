@@ -5,7 +5,9 @@ const rerenderEvents = ["onUpdated", "onRemoved", "onCreated", "onMoved", "onDet
 
 async function displayPage({url, title, favIconUrl}) {
   // Note this must be called in response to an event, so we can't call it in background.js:
-  await browser.sidebarAction.open();
+  if (!(await browser.runtime.sendMessage({ type: "isTSTActive" }))) {
+    await browser.sidebarAction.open();
+  }
   renderTabListLastRendered = {};
   for (let eventName of rerenderEvents) {
     browser.tabs[eventName].removeListener(updateHome);
@@ -129,7 +131,9 @@ function element(selector) {
 }
 
 element(".mobile-toggle").addEventListener("click", async () => {
-  await browser.sidebarAction.open();
+  if (!(await browser.runtime.sendMessage({ type: "isTSTActive" }))) {
+    await browser.sidebarAction.open();
+  }
   await browser.runtime.sendMessage({
     type: "toggleDesktop",
   });
