@@ -165,6 +165,31 @@ body {
   text-decoration: underline;
 }
 
+#landing-panel label {
+  display: block;
+  font: messagebox;
+}
+
+:root.in-subpanel #landing-panel {
+  justify-content: start;
+}
+
+:root.in-subpanel .title {
+  line-height: 1;
+}
+
+:root.in-subpanel .page {
+  padding: 0;
+}
+
+:root.in-subpanel #landing-panel .graphic {
+  transform: scale(0.5);
+}
+
+:root:not(.in-subpanel) #landing-panel label {
+  display: none;
+}
+
 /* Dark theme */
 
 .page.dark-theme {

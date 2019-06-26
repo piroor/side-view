@@ -25,6 +25,8 @@ async function checkForDark() {
 }
 
 async function init() {
+  document.documentElement.classList.toggle("in-subpanel", window.top !== window);
+
   element("#watch-tutorial").onclick = () => {
     const url = "https://youtu.be/no6D_B4wgo8";
     let openedWindow;
@@ -39,6 +41,17 @@ async function init() {
       });
     }
   };
+
+  const isTSTSupported = element("#isTSTSupported");
+  isTSTSupported.onclick = () => {
+    browser.runtime.sendMessage({
+      type: "setTSTSupported",
+      value: isTSTSupported.checked,
+    });
+  };
+  browser.runtime.sendMessage({
+    type: "isTSTSupported",
+  }).then(value => isTSTSupported.checked = value);
 
   if (!browser.management) {
     return;

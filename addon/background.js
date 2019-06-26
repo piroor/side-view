@@ -120,6 +120,14 @@ browser.runtime.onMessage.addListener(async (message) => {
     });
   } else if (message.type === "turnOffPrivateWarning") {
     turnOffPrivateWarning();
+  } else if (message.type === "isTSTSupported") {
+    return Promise.resolve(isTSTSupported);
+  } else if (message.type === "setTSTSupported") {
+    isTSTSupported = message.value;
+    browser.storage.local.set({ isTSTSupported });
+    if (isTSTSupported) {
+      registerToTST();
+    }
   } else if (message.type === "isTSTActive") {
     return Promise.resolve(isTSTActive);
   } else {
@@ -249,7 +257,7 @@ function showOnboardingBadge() {
 }
 
 async function init() {
-  const result = await browser.storage.local.get(["desktopHostnames", "defaultDesktopVersion", "recentTabs", "hasSeenPrivateWarning", "hasBeenOnboarded"]);
+  const result = await browser.storage.local.get(["desktopHostnames", "defaultDesktopVersion", "recentTabs", "hasSeenPrivateWarning", "hasBeenOnboarded", "isTSTSupported"]);
   if (!result.desktopHostnames) {
     desktopHostnames = {};
   } else {
@@ -269,6 +277,7 @@ async function init() {
     showOnboardingBadge();
   }
 
+  isTSTSupported = result.isTSTSupported;
   registerToTST();
 }
 
@@ -279,6 +288,7 @@ init();
 
 const TST_ID = "treestyletab@piro.sakura.ne.jp";
 let isTSTActive = false;
+let isTSTSupported = false;
 
 async function registerToTST(url) {
   try {
@@ -294,6 +304,9 @@ async function registerToTST(url) {
       },
     });
     if (success && !isTSTActive) {
+      if (!isTSTSupported) {
+        return;
+      }
       isTSTActive = true;
       browser.runtime.sendMessage(TST_ID, { type: "wait-for-shutdown" }).catch(error => {
         isTSTActive = false;
