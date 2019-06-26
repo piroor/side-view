@@ -101,6 +101,8 @@ browser.runtime.onMessage.addListener(async (message) => {
     if (!windowInfo.incognito) {
       addRecentTab(message);
     }
+  } else if (message.type === "openUrlInTab") {
+    browser.tabs.create({ url: message.url });
   } else if (message.type === "dismissTab") {
     dismissRecentTab(message.index);
   } else if (message.type === "getRecentAndDesktop") {
@@ -288,7 +290,7 @@ async function registerToTST(url) {
       listeningTypes: ["wait-for-shutdown"],
       subPanel: {
         title: manifest.name,
-        url:   url || "about:blank",
+        url:   url || `moz-extension://${location.host}/sidebar.html`,
       },
     });
     if (success && !isTSTActive) {

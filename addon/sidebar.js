@@ -9,6 +9,9 @@ function applyDarkTheme() {
 }
 
 async function checkForDark() {
+  if (!browser.management) {
+    return;
+  }
   browser.management.getAll().then((extensions) => {
     for (let extension of extensions) {
     // The user has the default dark theme enabled
@@ -23,8 +26,23 @@ async function checkForDark() {
 
 async function init() {
   element("#watch-tutorial").onclick = () => {
-    window.open("https://youtu.be/no6D_B4wgo8");
+    const url = "https://youtu.be/no6D_B4wgo8";
+    let openedWindow;
+    try {
+      openedWindow = window.open(url);
+    } catch (error) {
+    }
+    if (!openedWindow) {
+      browser.runtime.sendMessage({
+        type: "openUrlInTab",
+        url,
+      });
+    }
   };
+
+  if (!browser.management) {
+    return;
+  }
 
   checkForDark();
   browser.management.onEnabled.addListener((info) => {
